@@ -2,21 +2,22 @@
 
 options= -Ofast -march=native -fopenmp
 
-CFLAGS =-I./sprng/include -I/usr/local/include -DMOVECENTROIDTEST 
+#CFLAGS =-I./sprng/include -I/usr/local/include -DMOVECENTROIDTEST -DCHAINCONFIG
+CFLAGS =-I./sprng/include -I/usr/local/include -DCHAINCONFIG
  
 #-------------------------------------------------------------------------
 #  Compilers
 #-------------------------------------------------------------------------
 
-CC = g++ #@CXX@
-FC = ifort #@FC@
+CC = g++ -g #@CXX@
+FC = ifort -g #@FC@
 
 LDFLAGS = -lm -L./sprng/lib -llcg -lifcore
 
 #-------------------------------------------------------------------------
 # objects for QMC
  
-pimcOBJS=mc_piqmc.o mc_estim.o mc_qworm.o mc_input.o mc_setup.o mc_poten.o mc_randg.o mc_utils.o rotden.o rotpro_sub.o rotred.o potred.o vcord.o vcalc.o initconf.o vspher.o caleng_tip4p_gg.o omprng.o rngstream.o
+pimcOBJS=mc_piqmc.o mc_estim.o mc_qworm.o mc_input.o mc_setup.o mc_poten.o mc_randg.o mc_utils.o rotden.o rotpro_sub.o rotred.o potred.o vcord.o vcalc.o initconf.o vspher.o caleng_qtip4p_rigid.o omprng.o rngstream.o
  
 #----------------------------------------- PIMC --------------------------
 

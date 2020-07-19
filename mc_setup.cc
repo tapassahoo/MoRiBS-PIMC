@@ -27,6 +27,7 @@ int     IROTSYM  = 0;        // whether to rotate the dopants by their body-fixe
 int     NFOLD_ROT;           // foldness of rotational symmetry of the dopant
 
 bool    ROTATION = false;    // set to 1 to account for the rotational degrees of freedom
+bool    TRANSLATION = false;
 
 bool    BOSONS   = false;    // true if there're bosons in the system
 int     BSTYPE   = -1;       // atom type for bosons
@@ -64,6 +65,13 @@ int    NumbRotLim = 10; // limit of number of one type of rotors
 
 int     NumbAtoms;  // total number of atoms and molecules
 int     NumbTypes;  // Number of particles' types
+
+bool PIGS_SIM = false;
+bool PIMC_SIM = false;
+bool ENT_SIM = false;
+string ENT_ENSMBL;
+string ENT_ALGR;
+double Distance;
 
 TParticle MCAtom[MAX_NUMBER_TYPES];  // size should be NumbTypes+1
 
@@ -130,6 +138,7 @@ int       InitMCCoords; // integer flag for read in MCCoords;
 //----------------------------------------------------------
 
 void initLattice_config(double **);
+void initChain_config(double **);
 void replInitial_config(double **);
 
 void MCMemAlloc(void)  // allocate  memmory 
@@ -371,10 +380,14 @@ void MCInit(void)  // only undimensional parameters in this function
    cout<<endl;
 
    MCBeta   =  1.0/Temperature;
-   MCTau    =  MCBeta/(double)NumbTimes;
+   if (PIMC_SIM) MCTau    =  MCBeta/(double)NumbTimes;
+	else MCTau = MCBeta/((double)NumbTimes-1.0);
 
    if (ROTATION)
-   MCRotTau =  MCBeta/(double)NumbRotTimes;
+	{
+   if (PIMC_SIM) MCRotTau =  MCBeta/(double)NumbRotTimes;
+	else MCRotTau =  MCBeta/((double)NumbRotTimes-1.0);
+	}
 
    RotRatio  = 1;  // div_t quot - it's important for the area estimator
                    // even without rotations
@@ -457,7 +470,11 @@ void MCConfigInit(void)
    const char *_proc_=__func__;    // "MCConfigInit()";
 
 #ifndef HOSC_TEST
+#ifdef CHAINCONFIG
+	initChain_config(MCCoords);
+#else
    initLattice_config(MCCoords); 
+#endif
    replInitial_config(MCCoords);
 
    if (NDIM != 3) nrerror(_proc_,"Only 3D for rotational coordinates");
@@ -696,6 +713,77 @@ void initLattice_config(double **pos, int nslices)
    }
 }
 */
+
+void initChain_config(double **pos)
+{
+	cout<<"in initChain"<<endl;
+	const char *_proc_ = __func__;    // "initChain_config";
+
+    double shift[NDIM];
+    for (int id = 0; id < NDIM; id++)
+    {
+	    shift[id] = 0.0;
+    }
+
+	int NumbAtoms1;
+	if (ENT_SIM) NumbAtoms1 = NumbAtoms/2;
+	else NumbAtoms1 = NumbAtoms;
+
+	double LatticeTheta = 0.0; //0.25*M_PI;
+	double LatticePhi   = 0.25*M_PI;
+    for (int atom = 0; atom < NumbAtoms1; atom++)
+    {
+        for (int it = 0; it < NumbTimes; it++)
+        {
+            int ii = it + atom*NumbTimes;
+   		    for (int id = 0; id < NDIM; id++)   // set the center of the box at the origin
+    	    {
+	            pos[id][ii] = shift[id];
+	        }
+        }
+
+		shift[0] += Distance*sin(LatticeTheta)*cos(LatticePhi);
+		shift[1] += Distance*sin(LatticeTheta)*sin(LatticePhi);
+		shift[2] += Distance*cos(LatticeTheta);
+    }
+	if (ENT_SIM)
+	{
+		for (int id = 0; id < NDIM; id++) shift[id] = 0.0;
+
+		for (int atom = NumbAtoms1; atom < NumbAtoms; atom++)
+		{
+			for (int it = 0; it < NumbTimes; it++)
+			{
+				int ii = it + atom*NumbTimes;
+				for (int id = 0; id < NDIM; id++)   // set the center of the box at the origin
+				{
+					pos[id][ii] = shift[id];
+				}
+			}
+			shift[0] += Distance*sin(LatticeTheta)*cos(LatticePhi);
+			shift[1] += Distance*sin(LatticeTheta)*sin(LatticePhi);
+			shift[2] += Distance*cos(LatticeTheta);
+		}
+
+		shift[0] -= Distance*sin(LatticeTheta)*cos(LatticePhi);
+		shift[1] -= Distance*sin(LatticeTheta)*sin(LatticePhi);
+		shift[2] -= Distance*cos(LatticeTheta);
+		for (int atom = 0; atom < NumbAtoms1; atom++)
+		{
+			for (int it = 0; it < NumbTimes; it++)
+			{
+				int ii = it + atom*NumbTimes;
+				for (int id = 0; id < NDIM; id++)   // set the center of the box at the origin
+				{
+					pos[id][ii] = shift[id];
+				}
+			}
+			shift[0] -= Distance*sin(LatticeTheta)*cos(LatticePhi);
+			shift[1] -= Distance*sin(LatticeTheta)*sin(LatticePhi);
+			shift[2] -= Distance*cos(LatticeTheta);
+		}
+	}	
+}
 
 void replInitial_config(double **pos)
 // replicate configurations for all time slices

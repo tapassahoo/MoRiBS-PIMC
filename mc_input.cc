@@ -55,6 +55,7 @@ const char IO_HCP[]            = "HCP";
 const char IO_MCSKIP_RATIO[]   = "MCSKIP_RATIO";
 const char IO_MCSKIP_TOTAL[]   = "MCSKIP_TOTAL"; 
 const char IO_MCSKIP_AVERG[]   = "MCSKIP_AVERG";  
+const char IO_DISTANCE[]       = "DISTANCE";
 
 //------ MC STATUS----------------------------------
 
@@ -67,7 +68,12 @@ string OutputDir;
 string FNPrefix;
 
 string MCFileName;     // mc output file name (no extension)
+string PathToDensity;
  
+const char IO_PIMC_SIM[] = "PIMC_SIM";
+const char IO_PIGS_SIM[] = "PIGS_SIM";
+const char IO_ENT_SIM[]  = "ENT_SIM";
+
 void IOReadParams(const char in_file[],int & mc_status)
 //   mc_status =  0 - new run, 1 - restart  
 {
@@ -111,6 +117,10 @@ void IOReadParams(const char in_file[],int & mc_status)
 
    MCStartBlock = 0;
    
+	PIMC_SIM = false;
+	PIGS_SIM = false;
+	ENT_SIM = false;
+
    string params;
    while (inf>>params)
    {  
@@ -266,6 +276,7 @@ void IOReadParams(const char in_file[],int & mc_status)
 //      inf>>_srot_dens;   //   [3] the file name with the rotational density
 
         inf>> NumbRotTimes;//   [3]  number of rotational time slices     
+		inf>> PathToDensity;//   [4]  Path of rotational desity matrics .rho, .eng, .esq 
  
         ROTATION = true;
 
@@ -336,6 +347,28 @@ void IOReadParams(const char in_file[],int & mc_status)
      {
         inf >> MCSKIP_AVERG;
      } 
+     else 
+	if (params==IO_DISTANCE)
+	{
+		inf >> Distance;
+	}
+	else
+	if (params==IO_PIGS_SIM)
+	{
+		PIGS_SIM = true;
+	} 
+	else
+	if (params==IO_PIMC_SIM)
+	{
+		PIMC_SIM = true;
+	} 
+	else
+	if (params==IO_ENT_SIM)
+	{
+		ENT_SIM = true;
+		inf >> ENT_ENSMBL;
+		inf >> ENT_ALGR;
+	} 
      else
      {}
 
