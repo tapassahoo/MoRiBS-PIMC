@@ -443,7 +443,8 @@ void init_rot3D(int type)
    string  fname = MCAtom[type].type;
 
    stringstream time; time << NumbRotTimes;                  // number of time slices 
-   stringstream temp; temp << Temperature*Units.temperature; // temperature
+   //stringstream temp; temp << Temperature*Units.temperature; // temperature
+    stringstream temp; temp << std::fixed << std::setprecision(6)<<Temperature*Units.temperature; // temperature
 
    fname += ("_T" + temp.str() + "t" + time.str());
 
@@ -452,11 +453,16 @@ void init_rot3D(int type)
    string fden = fname;
    string feng = fname;
    string fesq = fname;
+   string pathr = PathToDensity;
+   cout<<pathr.c_str()<<endl;
 
    fden += EXT_RHO;
    feng += IO_EXT_ENG;
    fesq += EXT_ESQ;
 
+	fden = pathr+fden;
+	feng = pathr+feng;
+	fesq = pathr+fesq;
    cout<<fden<<" "<<feng<<" "<<fesq<<endl;
 
    ifstream fid(fden.c_str(),ios::in);

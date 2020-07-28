@@ -23,6 +23,7 @@ extern string OutputDir;
 extern string FNPrefix;
 
 extern string MCFileName;                // OutputDir+FNPrefix 
+extern string PathToDensity;
  
 //----IO errors----------------------------------------------
 

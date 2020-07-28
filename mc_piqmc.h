@@ -7,6 +7,7 @@ void MCRotationsMove(int);
 // Toby adds rotation move for nonlinear rotor
 void MCRotations3D(int);
 void MCRot3Dstep(int, int, int, int, double,double,double,double,double,int, int, double &, double &);
+void MCRot3DstepPIGS(int, int, int, int, double,double,double,double,double,int, int, double &, double &);
 void MCRotLinStep(int,int,int,int,double,double,double,double,double &,double &);
 void Reflect_MF_XZ(void);
 void Reflect_MF_YZ(void);
@@ -21,6 +22,10 @@ double PotEnergy(int,double **,int);
 
 double PotRotEnergy(int,double **,int it);   
 double PotRotE3D(int,double *,int it);   
+double PotRotE3DPIGS(int,double *,int it);   
+
+double GetDensity3DPIGS(int, double *, double *, double *);
+void CodeExit(int );
 
 extern double  **MCTotal;  // MC counters (total number of moves)
 extern double  **MCAccep;  // MC counters (number of accepted moves)

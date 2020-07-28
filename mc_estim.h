@@ -22,6 +22,8 @@ double GetPotEnergy_Diff(void); //added by Hui Li
 double GetPotEnergy_Densities(void);
 double GetPotEnergy(void);
 double GetKinEnergy(void);
+double GetTotalEnergy(void);
+double GetPotEnergyPIGS(void);
 
 double GetConfPoten_Densities(void); // HA test
 

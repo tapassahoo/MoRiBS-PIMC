@@ -44,6 +44,7 @@ void MCSaveAcceptRatio(long int,long int,long int);
 
 double _dbpot;       // potential energy differencies, block average  added by Hui Li
 double _bpot;       // kinetic   energy, block average
+double _btot;       // kinetic   energy, block average
 double _bkin;       // potential energy, block average
 double _bCv;        // heat capacity, block average
 double _bCv_trans;  // translational heat capacity, block average
@@ -51,6 +52,7 @@ double _bCv_rot;   //  rotational heat capacity, block average
 
 double _dpot_total;  // potential energy differences, global average  added by Hui Li
 double _pot_total;  // kinetic   energy, global average
+double _tot_total;  // kinetic   energy, global average
 double _kin_total;  // potential energy, global average 
 
 double _brot;       // rotational kin energy, block average
@@ -72,6 +74,7 @@ void SaveSumEnergy (double,double);                 // accumulated average
 
 void InitTotalAverage(void);
 void DoneTotalAverage(void);
+void SaveInstantConfig(const char [],long int); //Saving instataneous configurations
 
 //---------------- INITIAL MCCOORDS -----------
 
@@ -205,7 +208,9 @@ int main(int argc, char *argv[])
 //    string fname = MCFileName + IO_EXT_XYZ;
 //    IOxyz(IOWrite,fname.c_str());  // test output of initial config
       string fname = MCFileName;
+#ifdef IOWRITE
       IOxyzAng(IOWrite,fname.c_str()); // test output of initial config
+#endif
 
 //--------------------------------------------------------
 
@@ -447,6 +452,7 @@ int main(int argc, char *argv[])
        {
            MCSaveBlockAverages(blockCount);
 
+#ifdef IOWRITE
 //         save accumulated interatomic distribution
            SaveGraSum(MCFileName.c_str(),totalCount);
 
@@ -462,7 +468,10 @@ int main(int argc, char *argv[])
 
          if (ROTATION)                  // DUMP  accumulated average
          SaveRCF(MCFileName.c_str(),totalCount,MC_TOTAL);
+#endif
        }
+
+	SaveInstantConfig(MCFileName.c_str(),blockCount);
 
 //  CHECKPOINT: save status, rnd streams and configs ------
 
@@ -473,8 +482,10 @@ int main(int argc, char *argv[])
        IOFileBackUp(FTABLES); TablesIO(IOWrite,FTABLES);
        IOFileBackUp(FRANDOM); RandomIO(IOWrite,FRANDOM);      
       
+#ifdef IOWRITE
       string fname = MCFileName + IO_EXT_XYZ;
       IOxyz(IOWrite,fname.c_str());  // test output of initial config
+#endif
 
        if (WORM)
        {
@@ -509,10 +520,13 @@ int main(int argc, char *argv[])
 
 void PIMCPass(int type,int time)
 {
+	if (TRANSLATION)
+	{
    if (time == 0)
    MCMolecularMove(type);        
 
    MCBisectionMove(type,time);
+	}
 
    if ((type == IMTYPE) && ROTATION && MCAtom[type].molecule == 1)  // rotational degrees of freedom
    MCRotationsMove(type);
@@ -532,6 +546,7 @@ void MCResetBlockAverage(void)
 
   _dbpot = 0.0;  //added by Hui Li
   _bpot = 0.0;
+  _btot = 0.0;
   _bkin = 0.0;
 
   _brot = 0.0;
@@ -540,11 +555,11 @@ void MCResetBlockAverage(void)
   _bCv_trans = 0.0;
   _bCv_rot = 0.0;
 
-   PrintXYZprl = 1;
+   PrintXYZprl = 0;
 
-   PrintYrfl = 1;
-   PrintXrfl = 1;
-   PrintZrfl = 1;
+   PrintYrfl = 0;
+   PrintXrfl = 0;
+   PrintZrfl = 0;
 
 }
 
@@ -552,17 +567,25 @@ void MCGetAverage(void)
 {
    avergCount += 1.0;
    totalCount += 1.0;  
+	if (PIGS_SIM) 
+	{
+		double spot = GetPotEnergyPIGS();// pot energy for pigs simulation 
+		_bpot += spot;  // block average for pot energy
+		_pot_total  += spot;
+		double stot = GetTotalEnergy();// pot energy for pigs simulation 
+		_btot += stot;  // block average for pot energy
+		_tot_total  += stot;
+	}
 
-   double skin = GetKinEnergy();           // kin energy
-   double spot = GetPotEnergy_Densities(); // pot energy and density distributions
+   if (PIMC_SIM) 
+	{
+	double spot = GetPotEnergy_Densities(); // pot energy and density distributions
    double srot = 0.0;
 //   double dspot = GetPotEnergy_Diff(); // pot energy differencies added by Hui Li 
 
-  _bkin += skin;  // block average for kin energy
   _bpot += spot;  // block average for pot energy
  // _dbpot += dspot;  // block average for pot energy differencies added by Hui Li
  
-  _kin_total  += skin; // accumulated average 
   _pot_total  += spot;
 //  _dpot_total  += dspot;  //added by Hui Li
 
@@ -583,9 +606,14 @@ void MCGetAverage(void)
       _brotsq      += ErotSQ;
       _rotsq_total += ErotSQ;
 
-       GetRCF(); 
+       if (PIMC_SIM) GetRCF(); 
    }
 
+	if (TRANSLATION && ROTATION)
+	{
+	double skin = GetKinEnergy();           // kin energy
+	_bkin += skin;  // block average for kin energy
+	_kin_total  += skin; // accumulated average 
 // accumulate terms for Cv
    double sCv;
    sCv = -0.5*(double)(NDIM*NumbAtoms)/(MCBeta*MCTau)
@@ -614,6 +642,7 @@ void MCGetAverage(void)
 
    _bCv_rot += sCv_rot;
    _Cv_rot_total += sCv_rot;
+	}
 
 /* reactive */
 // check whether there're bosons in the system
@@ -642,6 +671,7 @@ void MCGetAverage(void)
       int iframe = 1;
       GetAreaEstim3D(iframe);
    }
+	}
 
 //    reflect for MF molecule
       if(IREFLY == 1)
@@ -712,6 +742,8 @@ void MCSaveBlockAverages(long int blocknumb)
 
    string fname = MCFileName + bc.str();  // file name prefix including block #
 
+   SaveEnergy         (MCFileName.c_str(),avergCount,blocknumb);
+#ifdef IOWRITE
 //-----------------------------------------------------------------
 // densities
 
@@ -739,7 +771,6 @@ void MCSaveBlockAverages(long int blocknumb)
    if (ROTATION) 
    SaveRCF            (fname.c_str(),avergCount,MC_BLOCK); 
 
-   SaveEnergy         (MCFileName.c_str(),avergCount,blocknumb);
 
    if (BOSONS) 
    SaveExchangeLength (MCFileName.c_str(),avergCount,blocknumb);
@@ -758,6 +789,7 @@ void MCSaveBlockAverages(long int blocknumb)
       int iframe = 1;
       SaveAreaEstim3D (MCFileName.c_str(),avergCount,blocknumb,iframe);
    }
+#endif
 
 }
 
@@ -777,6 +809,8 @@ void SaveEnergy (const char fname [], double acount, long int blocknumb)
    if (!fid.is_open())
   _io_error(_proc_,IO_ERR_FOPEN,fenergy.c_str());
 
+	if (PIMC_SIM && TRANSLATION && ROTATION)
+	{
    fid << setw(IO_WIDTH_BLOCK) << blocknumb  << BLANK;                 // block number
    fid << setw(IO_WIDTH) << _bkin*Units.energy/avergCount << BLANK;    // kinetic energy
    fid << setw(IO_WIDTH) << _bpot*Units.energy/avergCount << BLANK;    // potential anergy
@@ -791,6 +825,24 @@ void SaveEnergy (const char fname [], double acount, long int blocknumb)
    fid << setw(IO_WIDTH) << _bCv_trans/avergCount << BLANK; // translational heat capacity
    fid << setw(IO_WIDTH) << _bCv_rot/avergCount << BLANK; // rotational heat capacity
    fid << endl;
+	}
+	else if (PIMC_SIM && ROTATION)
+	{
+   fid << setw(IO_WIDTH_BLOCK) << blocknumb  << BLANK;                 // block number
+   fid << setw(IO_WIDTH) << _bpot*Units.energy/avergCount << BLANK;    // potential anergy
+   
+// if (ROTATION)
+   fid << setw(IO_WIDTH) << _brot*Units.energy/avergCount << BLANK;    // rot energy
+   fid << setw(IO_WIDTH) <<(_bpot+_brot)*Units.energy/avergCount << BLANK;  //total energy including rot energy 
+   fid << endl;
+	}
+	else if (PIGS_SIM)
+	{
+   fid << setw(IO_WIDTH_BLOCK) << blocknumb  << BLANK;                 // block number
+   fid << setw(IO_WIDTH) << _bpot*Units.energy/avergCount << BLANK;    // potential anergy
+   fid << setw(IO_WIDTH) << _btot*Units.energy/avergCount << BLANK;    // rot energy
+   fid << endl;
+	}
    fid.close();
 }
 
@@ -798,6 +850,8 @@ void SaveSumEnergy (double acount, double numb)  // global average
 {
    const char *_proc_=__func__;    //  SaveSumEnergy()
  
+	if (PIMC_SIM)
+	{
   _feng << setw(IO_WIDTH_BLOCK) << numb << BLANK;    
   _feng << setw(IO_WIDTH) << _kin_total*Units.energy/acount << BLANK;    
   _feng << setw(IO_WIDTH) << _pot_total*Units.energy/acount << BLANK;    
@@ -831,8 +885,66 @@ void SaveSumEnergy (double acount, double numb)  // global average
 
 //_feng << setw(IO_WIDTH) << _Cv_trans_1_total*Units.energy*Units.energy/acount << BLANK;
 //_feng << setw(IO_WIDTH) << _Cv_trans_2_total*Units.energy*Units.energy/acount << BLANK;
+	}
+	else if (PIGS_SIM)
+	{
+  _feng << setw(IO_WIDTH_BLOCK) << numb << BLANK;    
+  _feng << setw(IO_WIDTH) << _pot_total*Units.energy/acount << BLANK;    
+  _feng << setw(IO_WIDTH) <<_tot_total*Units.energy/acount << BLANK;   
+	}
 
   _feng << endl;
+}
+
+void SaveInstantConfig(const char fname [], long int blocknumb)
+{
+	const char *_proc_=__func__;   
+ 
+	fstream fid;
+	string fconfig;
+
+	fconfig  = fname; 
+	fconfig += IO_EXT_XYZ; 
+
+	fid.open(fconfig.c_str(),ios::app | ios::out);
+	io_setout(fid);
+
+	if (!fid.is_open()) _io_error(_proc_,IO_ERR_FOPEN,fconfig.c_str());
+
+	fid << setw(IO_WIDTH_BLOCK) << blocknumb  << BLANK;                 // block number 1 
+
+	if (TRANSLATION)
+	{
+		for (int atom0 = 0; atom0 < NumbAtoms; atom0++)
+		{
+			for (int it = 0; it < NumbTimes; it++) 
+			{
+				int offset0 = NumbTimes*atom0;
+				int t0      = offset0 + it;
+
+				fid << setw(IO_WIDTH) << MCCoords[AXIS_X][t0] << BLANK;
+				fid << setw(IO_WIDTH) << MCCoords[AXIS_Y][t0] << BLANK;
+				fid << setw(IO_WIDTH) << MCCoords[AXIS_Z][t0] << BLANK;
+			}
+		}
+	}
+
+	if (ROTATION)
+	{
+		for (int atom0 = 0; atom0 < NumbAtoms; atom0++)
+		{
+			for (int it = 0; it < NumbRotTimes; it++) 
+			{
+				int offset0 = NumbTimes*atom0;
+				int t0      = offset0 + it;
+				fid << setw(IO_WIDTH) << MCAngles[CTH][t0] << BLANK;
+				fid << setw(IO_WIDTH) << MCAngles[PHI][t0] << BLANK;
+				fid << setw(IO_WIDTH) << MCAngles[CHI][t0] << BLANK;
+			}
+		}
+	}
+	fid << endl;
+    fid.close();
 }
 
 void InitTotalAverage(void)  // DUMP
@@ -843,6 +955,7 @@ void InitTotalAverage(void)  // DUMP
 
   _kin_total = 0.0;   // need a function to reset all global average
   _pot_total = 0.0;
+  _tot_total = 0.0;
   _dpot_total = 0.0;  //added by Hui Li
 
   _rot_total = 0.0;
@@ -884,6 +997,8 @@ void MCSaveAcceptRatio(long int step,long int pass,long int block)
    cout << "PASS:"  << setw(w) << pass  << BLANK;
    cout << "STEP:"  << setw(w) << step  << BLANK;
 
+	if (TRANSLATION)
+	{
    for (int type=0;type<NumbTypes;type++)
    if (WORM && (type == Worm.type))
    {
@@ -930,6 +1045,7 @@ void MCSaveAcceptRatio(long int step,long int pass,long int block)
       cout<<setw(w)<<ratio_molec<<BLANK;       // accept ratio for "molecular" move
       cout<<setw(w)<<ratio_multi<<BLANK;       // accept ratio for multilevel move 
    }
+	}
 
    if (ROTATION)
    {
