@@ -644,6 +644,23 @@ void MCGetAverage(void)
    _Cv_rot_total += sCv_rot;
 	}
 
+	if (!TRANSLATION && ROTATION)
+	{
+		// accumulate terms for Cv
+		double sCv;
+		sCv = -(spot + srot)*(spot + srot) + Erot_termSQ - ErotSQ;
+
+		_bCv += sCv;
+		_Cv_total += sCv;
+
+		// accumulate terms for rotational Cv
+		double sCv_rot;
+		sCv_rot = -srot*srot + Erot_termSQ - ErotSQ;
+
+		_bCv_rot += sCv_rot;
+		_Cv_rot_total += sCv_rot;
+	}
+
 /* reactive */
 // check whether there're bosons in the system
 
@@ -828,13 +845,14 @@ void SaveEnergy (const char fname [], double acount, long int blocknumb)
 	}
 	else if (PIMC_SIM && ROTATION)
 	{
-   fid << setw(IO_WIDTH_BLOCK) << blocknumb  << BLANK;                 // block number
-   fid << setw(IO_WIDTH) << _bpot*Units.energy/avergCount << BLANK;    // potential anergy
-   
-// if (ROTATION)
-   fid << setw(IO_WIDTH) << _brot*Units.energy/avergCount << BLANK;    // rot energy
-   fid << setw(IO_WIDTH) <<(_bpot+_brot)*Units.energy/avergCount << BLANK;  //total energy including rot energy 
-   fid << endl;
+	   fid << setw(IO_WIDTH_BLOCK) << blocknumb  << BLANK;                 // block number
+	   fid << setw(IO_WIDTH) << _brot*Units.energy/avergCount << BLANK;    // rot energy
+	   fid << setw(IO_WIDTH) << _bpot*Units.energy/avergCount << BLANK;    // potential anergy
+	   fid << setw(IO_WIDTH) <<(_bpot+_brot)*Units.energy/avergCount << BLANK;  //total energy including rot energy 
+	   fid << setw(IO_WIDTH) << _brotsq*(Units.energy*Units.energy)/avergCount << BLANK;    // rot energy square
+	   fid << setw(IO_WIDTH) << _bCv/avergCount << BLANK; // heat capacity
+	   fid << setw(IO_WIDTH) << _bCv_rot/avergCount << BLANK; // rotational heat capacity
+	   fid << endl;
 	}
 	else if (PIGS_SIM)
 	{
@@ -849,19 +867,16 @@ void SaveEnergy (const char fname [], double acount, long int blocknumb)
 void SaveSumEnergy (double acount, double numb)  // global average
 {
    const char *_proc_=__func__;    //  SaveSumEnergy()
- 
-	if (PIMC_SIM)
+
+ 	if (PIMC_SIM && TRANSLATION && ROTATION)
 	{
   _feng << setw(IO_WIDTH_BLOCK) << numb << BLANK;    
   _feng << setw(IO_WIDTH) << _kin_total*Units.energy/acount << BLANK;    
   _feng << setw(IO_WIDTH) << _pot_total*Units.energy/acount << BLANK;    
   _feng << setw(IO_WIDTH) <<(_kin_total+_pot_total)*Units.energy/acount << BLANK;   
 
-// if (ROTATION)
-   {
   _feng << setw(IO_WIDTH) <<_rot_total*Units.energy/acount << BLANK;   
   _feng << setw(IO_WIDTH) <<_rotsq_total*(Units.energy*Units.energy)/acount << BLANK;   
-   }
 //_feng << setw(IO_WIDTH) << _dpot_total*Units.energy/acount << BLANK;   //added by Hui Li 
   _feng << setw(IO_WIDTH) <<(_kin_total+_pot_total+_rot_total)*Units.energy/acount << BLANK;  //total energy including rot  
 // Cv
@@ -875,16 +890,31 @@ void SaveSumEnergy (double acount, double numb)  // global average
    Cv_trans = -Cv_trans*MCBeta/Temperature;
   _feng << setw(IO_WIDTH) <<Cv_trans << BLANK;
 
-// if (ROTATION)
-   {
    double Cv_rot = -_rot_total*Units.energy/acount;
    Cv_rot = Cv_rot*Cv_rot+ _Cv_rot_total*Units.energy*Units.energy/acount;
    Cv_rot = -Cv_rot*MCBeta/Temperature;
   _feng << setw(IO_WIDTH) <<Cv_rot << BLANK;
-   }
 
 //_feng << setw(IO_WIDTH) << _Cv_trans_1_total*Units.energy*Units.energy/acount << BLANK;
 //_feng << setw(IO_WIDTH) << _Cv_trans_2_total*Units.energy*Units.energy/acount << BLANK;
+	}
+	else if (PIMC_SIM && !TRANSLATION && ROTATION)
+	{
+	  _feng << setw(IO_WIDTH_BLOCK) << numb << BLANK;    
+	  _feng << setw(IO_WIDTH) <<_rot_total*Units.energy/acount << BLANK;   
+	  _feng << setw(IO_WIDTH) << _pot_total*Units.energy/acount << BLANK;    
+	  _feng << setw(IO_WIDTH) <<(_pot_total+_rot_total)*Units.energy/acount << BLANK;  //total energy including rot  
+	  _feng << setw(IO_WIDTH) <<_rotsq_total*(Units.energy*Units.energy)/acount << BLANK;   
+	// Cv
+	   double Cv = -(_pot_total+_rot_total)*Units.energy/acount;
+	   Cv = Cv*Cv + _Cv_total*Units.energy*Units.energy/acount;
+	   Cv = -Cv*MCBeta/Temperature;
+	  _feng << setw(IO_WIDTH) <<Cv << BLANK;
+
+	   double Cv_rot = -_rot_total*Units.energy/acount;
+	   Cv_rot = Cv_rot*Cv_rot+ _Cv_rot_total*Units.energy*Units.energy/acount;
+	   Cv_rot = -Cv_rot*MCBeta/Temperature;
+	  _feng << setw(IO_WIDTH) <<Cv_rot << BLANK;
 	}
 	else if (PIGS_SIM)
 	{
