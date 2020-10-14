@@ -61,7 +61,7 @@ double Y_Rot = 0.0; // rotational constant B in the unit of cm-1
 double Z_Rot = 0.0; // rotational constant C in the unit of cm-1
 int    RNratio = 1; // ratio between RS and Noya steps in hybrid rotational energy estimation
 
-int    NumbRotLim = 10; // limit of number of one type of rotors
+int    NumbRotLim = 100; // limit of number of one type of rotors
 
 int     NumbAtoms;  // total number of atoms and molecules
 int     NumbTypes;  // Number of particles' types

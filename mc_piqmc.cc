@@ -737,7 +737,7 @@ void MCRotations3D(int type) // update all time slices for rotational degrees of
    #pragma omp parallel for reduction(+: MCRotChunkTot,MCRotChunkAcp) private(rand1,rand2,rand3,rand4)
    for (int itrot=0;itrot<NumbRotTimes;itrot=itrot+2)
    {
-      for(int atom0=0;atom0<(MCAtom[type].numb-1);atom0++)
+      for(int atom0=0;atom0<MCAtom[type].numb;atom0++)
       {
          int offset = MCAtom[type].offset+(NumbTimes*atom0);   // the same offset for rotational
          int gatom  = offset/NumbTimes;    // and translational degrees of freedom
@@ -759,7 +759,7 @@ void MCRotations3D(int type) // update all time slices for rotational degrees of
    #pragma omp parallel for reduction(+: MCRotChunkTot,MCRotChunkAcp) private(rand1,rand2,rand3,rand4)
    for (int itrot=1;itrot<NumbRotTimes;itrot=itrot+2)
    {
-      for(int atom0=0;atom0<(MCAtom[type].numb-1);atom0++)
+      for(int atom0=0;atom0<MCAtom[type].numb;atom0++)
       {
          int offset = MCAtom[type].offset+(NumbTimes*atom0);   // the same offset for rotational
          int gatom  = offset/NumbTimes;    // and translational degrees of freedom
